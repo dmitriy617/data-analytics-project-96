@@ -1,89 +1,84 @@
-WITH session_leads AS (
-    SELECT
+WITH last_paid_click AS (
+    SELECT 
+        s.visitor_id,
         s.visit_date::date AS visit_date,
         s.source AS utm_source,
         s.medium AS utm_medium,
         s.campaign AS utm_campaign,
-        COUNT(DISTINCT s.visitor_id) AS visitors_count,
-        COUNT(DISTINCT l.lead_id) AS leads_count,
-        COUNT(DISTINCT CASE WHEN l.closing_reason = 'Успешно реализовано' OR l.status_id = 142 THEN l.lead_id END) AS purchases_count,
-        SUM(CASE WHEN l.closing_reason = 'Успешно реализовано' OR l.status_id = 142 THEN l.amount ELSE 0 END) AS revenue
-    FROM
+        l.lead_id,
+        l.created_at::date AS lead_date,
+        l.amount,
+        l.closing_reason,
+        l.status_id,
+        ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC) AS rn
+    FROM 
         sessions s
-    LEFT JOIN
-        leads l ON s.visitor_id = l.visitor_id AND l.created_at::date = s.visit_date::date
-    GROUP BY
-        s.visit_date::date, s.source, s.medium, s.campaign
+    LEFT JOIN 
+        leads l ON s.visitor_id = l.visitor_id
+        AND s.visit_date <= l.created_at
+    WHERE 
+        s.medium IN ('cpc', 'cpm', 'cpa', 'youtube', 'cpp', 'tg', 'social')
 ),
 ads_costs AS (
     SELECT
-        campaign_date::date AS visit_date,
+        campaign_date::date AS campaign_date,
         utm_source,
         utm_medium,
         utm_campaign,
         SUM(daily_spent) AS total_cost
-    FROM (
-        SELECT
-            campaign_date,
-            utm_source,
-            utm_medium,
-            utm_campaign,
-            daily_spent
-        FROM
-            vk_ads
-        UNION ALL
-        SELECT
-            campaign_date,
-            utm_source,
-            utm_medium,
-            utm_campaign,
-            daily_spent
-        FROM
-            ya_ads
-    ) ads
-    GROUP BY
+    FROM 
+        (SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent FROM vk_ads
+         UNION ALL
+         SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent FROM ya_ads) ads
+    GROUP BY 
         campaign_date::date, utm_source, utm_medium, utm_campaign
 ),
-combined_data AS (
+aggregated_data AS (
     SELECT
-        s.visit_date,
-        s.utm_source,
-        s.utm_medium,
-        s.utm_campaign,
-        s.visitors_count,
-        COALESCE(a.total_cost, 0) AS total_cost,
-        s.leads_count,
-        s.purchases_count,
-        s.revenue,
-        (COALESCE(a.total_cost, 0) / NULLIF(s.visitors_count, 0)) AS cpu,
-        (COALESCE(a.total_cost, 0) / NULLIF(s.leads_count, 0)) AS cpl,
-        (COALESCE(a.total_cost, 0) / NULLIF(s.purchases_count, 0)) AS cppu,
-        ((s.revenue - COALESCE(a.total_cost, 0)) / NULLIF(COALESCE(a.total_cost, 1), 0)) * 100 AS roi
-    FROM
-        session_leads s
-    LEFT JOIN
-        ads_costs a ON s.visit_date = a.visit_date AND s.utm_source = a.utm_source AND s.utm_medium = a.utm_medium AND s.utm_campaign = a.utm_campaign
+        lc.visit_date,
+        lc.utm_source,
+        lc.utm_medium,
+        lc.utm_campaign,
+        COUNT(DISTINCT lc.visitor_id) AS visitors_count,
+        COUNT(DISTINCT lc.lead_id) AS leads_count,
+        COUNT(DISTINCT CASE WHEN lc.closing_reason = 'Успешно реализовано' OR lc.status_id = 142 THEN lc.lead_id END) AS purchases_count,
+        SUM(CASE WHEN lc.closing_reason = 'Успешно реализовано' OR lc.status_id = 142 THEN lc.amount ELSE 0 END) AS revenue
+    FROM 
+        last_paid_click lc
+    WHERE 
+        lc.rn = 1
+    GROUP BY 
+        lc.visit_date, lc.utm_source, lc.utm_medium, lc.utm_campaign
 )
 SELECT
-    visit_date,
-    utm_source,
-    utm_medium,
-    utm_campaign,
-    cpu,
-    cpl,
-    cppu,
-    roi,
-    visitors_count*10000 as viscount,
-    (leads_count*10000)/visitors_count as leads,
-    (purchases_count*10000)/visitors_count as purchase
-FROM
-    combined_data
-ORDER by
-	leads desc,
-	purchase desc,
-	utm_campaign,
-    revenue DESC NULLS LAST,
-    visit_date,
-    visitors_count DESC,
-    utm_source,
-    utm_medium;
+    ag.visit_date,
+    ag.visitors_count,
+    ag.utm_source,
+    ag.utm_medium,
+    ag.utm_campaign,
+    COALESCE(ac.total_cost, 0) AS total_cost,
+    ag.leads_count,
+    ag.purchases_count,
+    ag.revenue,
+    (COALESCE(ac.total_cost, 0) / NULLIF(ag.visitors_count, 0)) AS cpu,
+    (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
+    (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
+    ((ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF(COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
+    (ag.leads_count*100)/ag.visitors_count as leads,
+    (ag.purchases_count*100)/ag.visitors_count as purchase
+FROM 
+    aggregated_data ag
+LEFT JOIN 
+    ads_costs ac 
+ON 
+    ag.visit_date = ac.campaign_date 
+    AND ag.utm_source = ac.utm_source 
+    AND ag.utm_medium = ac.utm_medium 
+    AND ag.utm_campaign = ac.utm_campaign
+ORDER BY 
+    ag.revenue DESC NULLS LAST,
+    ag.visit_date ASC,
+    ag.visitors_count DESC,
+    ag.utm_source,
+    ag.utm_medium,
+    ag.utm_campaign;
