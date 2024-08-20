@@ -52,11 +52,11 @@ aggregated_data AS (
 )
 SELECT
     ag.visit_date,
+    ag.visitors_count,
     ag.utm_source,
     ag.utm_medium,
     ag.utm_campaign,
-    ag.visitors_count,
-    COALESCE(ac.total_cost, 0) AS total_cost,
+    ac.total_cost AS total_cost,
     ag.leads_count,
     ag.purchases_count,
     ag.revenue
