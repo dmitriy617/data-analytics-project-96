@@ -37,12 +37,12 @@ WHERE
     rn = 1
 ORDER BY
     amount DESC NULLS LAST,
-    visit_date,
-    utm_source,
-    utm_medium,
-    utm_campaign,
-    visitor_id,
-    lead_id,
-    created_at,
-    closing_reason,
-    status_id;
+    visit_date ASC,
+    utm_source ASC,
+    utm_medium ASC,
+    utm_campaign ASC,
+    visitor_id ASC,
+    lead_id ASC,
+    created_at ASC,
+    closing_reason ASC,
+    status_id ASC;
