@@ -77,10 +77,10 @@ aggregated_data AS (
         ) AS purchases_count,
         SUM(
             CASE
-                WHEN 
+                WHEN
                     lc.closing_reason = 'Успешно реализовано'
                     OR lc.status_id = 142
-                        THEN lc.amount
+                    THEN lc.amount
                 ELSE 0
             END
         ) AS revenue
@@ -99,7 +99,7 @@ SELECT
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.visitors_count, 0)) AS cpu,
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
-    ((ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF
+    ((ag.revenue - (COALESCE(ac.total_cost, 0))) / NULLIF
     (COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
     (ag.leads_count * 100) / ag.visitors_count AS leads,
     (ag.purchases_count * 100) / ag.visitors_count AS purchase
@@ -116,7 +116,8 @@ FROM
     aggregated_data AS ag
 LEFT JOIN
     ads_costs AS ac
-        ON ag.visit_date = ac.campaign_date
+        ON 
+        ag.visit_date = ac.campaign_date
         AND ag.utm_source = ac.utm_source
         AND ag.utm_medium = ac.utm_medium
         AND ag.utm_campaign = ac.utm_campaign
