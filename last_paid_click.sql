@@ -13,12 +13,13 @@ WITH last_paid_click AS (
         ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC)
         AS rn
     FROM
-        sessions s
+        sessions AS s
     LEFT JOIN
-        leads l ON s.visitor_id = l.visitor_id
+        leads AS l ON s.visitor_id = l.visitor_id
     WHERE
         s.medium IN ('cpc', 'cpm', 'cpa', 'youtube', 'cpp', 'tg', 'social')
 )
+
 SELECT
     visitor_id,
     visit_date,
