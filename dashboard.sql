@@ -12,7 +12,7 @@ WITH last_paid_click AS (
         l.status_id,
         ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC)
         AS rn
-FROM
+    FROM
         sessions AS s
     LEFT JOIN
         leads AS l
@@ -92,6 +92,7 @@ aggregated_data AS (
         lc.utm_medium,
         lc.utm_campaign
 )
+
 SELECT
     ag.visit_date,
     ag.visitors_count,
@@ -105,19 +106,20 @@ SELECT
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.visitors_count, 0)) AS cpu,
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
-    ((ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF(COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
+    ((ag.revenue - COALESCE(ac.total_cost, 0)) / 
+    NULLIF(COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
     (ag.leads_count * 100) / ag.visitors_count as leads,
     (ag.purchases_count * 100) / ag.visitors_count as purchase
-FROM 
-    aggregated_data ag
-LEFT JOIN 
-    ads_costs ac 
-ON 
-    ag.visit_date = ac.campaign_date 
-    AND ag.utm_source = ac.utm_source 
-    AND ag.utm_medium = ac.utm_medium 
+FROM
+    aggregated_data AS ag
+LEFT JOIN
+    ads_costs AS ac
+ON
+    ag.visit_date = ac.campaign_date
+    AND ag.utm_source = ac.utm_source
+    AND ag.utm_medium = ac.utm_medium
     AND ag.utm_campaign = ac.utm_campaign
-ORDER BY 
+ORDER BY
     ag.revenue DESC NULLS LAST,
     ag.visit_date ASC,
     ag.visitors_count DESC,
