@@ -1,5 +1,5 @@
 WITH last_paid_click AS (
-    SELECT 
+    SELECT
         s.visitor_id,
         s.visit_date::date AS visit_date,
         s.source AS utm_source,
@@ -11,15 +11,17 @@ WITH last_paid_click AS (
         l.closing_reason,
         l.status_id,
         ROW_NUMBER() OVER (
-            PARTITION BY s.visitor_id 
+            PARTITION BY s.visitor_id
             ORDER BY s.visit_date DESC
         ) AS rn
-    FROM 
+    FROM
         sessions AS s
-    LEFT JOIN 
-        leads AS l 
-        ON s.visitor_id = l.visitor_id
-        AND s.visit_date <= l.created_at
+    LEFT JOIN
+        leads AS l
+        ON
+            s.visitor_id = l.visitor_id
+        AND
+            s.visit_date <= l.created_at
     WHERE 
         s.medium IN ('cpc', 'cpm', 'cpa', 'youtube', 'cpp', 'tg', 'social')
 ),
