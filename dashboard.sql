@@ -12,11 +12,14 @@ WITH last_paid_click AS (
         l.status_id,
         ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC)
         AS rn
-    FROM
-        sessions s
-    LEFT JOIN 
-        leads l ON s.visitor_id = l.visitor_id
-        AND s.visit_date <= l.created_at
+FROM
+        sessions AS s
+    LEFT JOIN
+        leads AS l
+        ON
+            s.visitor_id = l.visitor_id
+            AND
+            s.visit_date <= l.created_at
     WHERE
         s.medium IN ('cpc', 'cpm', 'cpa', 'youtube', 'cpp', 'tg', 'social')
 ),
@@ -28,15 +31,32 @@ ads_costs AS (
         utm_medium,
         utm_campaign,
         SUM(daily_spent) AS total_cost
-    FROM
-        (SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent 
-        FROM vk_ads
-         UNION ALL
-         SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent 
-        FROM ya_ads) ads
-    GROUP BY 
-        campaign_date::date, utm_source, utm_medium, utm_campaign
+    FROM (
+        SELECT
+            campaign_date,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            daily_spent
+        FROM
+            vk_ads
+        UNION ALL
+        SELECT
+            campaign_date,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            daily_spent
+        FROM
+            ya_ads
+    ) AS ads
+    GROUP BY
+        campaign_date,
+        utm_source,
+        utm_medium,
+        utm_campaign
 ),
+
 aggregated_data AS (
     SELECT
         lc.visit_date,
@@ -45,14 +65,32 @@ aggregated_data AS (
         lc.utm_campaign,
         COUNT(DISTINCT lc.visitor_id) AS visitors_count,
         COUNT(DISTINCT lc.lead_id) AS leads_count,
-        COUNT(DISTINCT CASE WHEN lc.closing_reason = 'Успешно реализовано' OR lc.status_id = 142 THEN lc.lead_id END) AS purchases_count,
-        SUM(CASE WHEN lc.closing_reason = 'Успешно реализовано' OR lc.status_id = 142 THEN lc.amount ELSE 0 END) AS revenue
-    FROM 
-        last_paid_click lc
-    WHERE 
+        COUNT(
+            DISTINCT CASE
+                WHEN
+                    lc.closing_reason = 'Успешно реализовано'
+                    OR lc.status_id = 142
+                    THEN lc.lead_id
+            END
+        ) AS purchases_count,
+        SUM(
+            CASE
+                WHEN
+                    lc.closing_reason = 'Успешно реализовано'
+                    OR lc.status_id = 142
+                    THEN lc.amount
+                ELSE 0
+            END
+        ) AS revenue
+    FROM
+        last_paid_click AS lc
+    WHERE
         lc.rn = 1
-    GROUP BY 
-        lc.visit_date, lc.utm_source, lc.utm_medium, lc.utm_campaign
+    GROUP BY
+        lc.visit_date,
+        lc.utm_source,
+        lc.utm_medium,
+        lc.utm_campaign
 )
 SELECT
     ag.visit_date,
@@ -68,8 +106,8 @@ SELECT
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
     ((ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF(COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
-    (ag.leads_count*100)/ag.visitors_count as leads,
-    (ag.purchases_count*100)/ag.visitors_count as purchase
+    (ag.leads_count * 100) / ag.visitors_count as leads,
+    (ag.purchases_count * 100) / ag.visitors_count as purchase
 FROM 
     aggregated_data ag
 LEFT JOIN 
