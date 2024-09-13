@@ -1,5 +1,5 @@
 WITH last_paid_click AS (
-    SELECT 
+    SELECT
         s.visitor_id,
         s.visit_date::date AS visit_date,
         s.source AS utm_source,
@@ -10,15 +10,17 @@ WITH last_paid_click AS (
         l.amount,
         l.closing_reason,
         l.status_id,
-        ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC) AS rn
-    FROM 
+        ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC)
+        AS rn
+    FROM
         sessions s
     LEFT JOIN 
         leads l ON s.visitor_id = l.visitor_id
         AND s.visit_date <= l.created_at
-    WHERE 
+    WHERE
         s.medium IN ('cpc', 'cpm', 'cpa', 'youtube', 'cpp', 'tg', 'social')
 ),
+
 ads_costs AS (
     SELECT
         campaign_date::date AS campaign_date,
@@ -26,10 +28,12 @@ ads_costs AS (
         utm_medium,
         utm_campaign,
         SUM(daily_spent) AS total_cost
-    FROM 
-        (SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent FROM vk_ads
+    FROM
+        (SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent 
+        FROM vk_ads
          UNION ALL
-         SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent FROM ya_ads) ads
+         SELECT campaign_date, utm_source, utm_medium, utm_campaign, daily_spent 
+        FROM ya_ads) ads
     GROUP BY 
         campaign_date::date, utm_source, utm_medium, utm_campaign
 ),
