@@ -40,4 +40,9 @@ ORDER BY
     visit_date,
     utm_source,
     utm_medium,
-    utm_campaign;
+    utm_campaign,
+    visitor_id,
+    lead_id,
+    created_at,
+    closing_reason,
+    status_id;
