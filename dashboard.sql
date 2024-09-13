@@ -108,8 +108,7 @@ SELECT
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
     (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
     (
-    (ag.revenue - COALESCE(ac.total_cost, 0)) /
-        NULLIF(COALESCE(ac.total_cost, 0), 0)
+        (ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF(COALESCE(ac.total_cost, 0), 0)
     ) * 100 AS roi,
     (ag.leads_count * 100) / ag.visitors_count AS leads,
     (ag.purchases_count * 100) / ag.visitors_count AS purchase,
