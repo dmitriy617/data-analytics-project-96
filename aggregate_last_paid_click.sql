@@ -20,9 +20,9 @@ WITH last_paid_click AS (
         leads AS l
         ON
             s.visitor_id = l.visitor_id
-        AND
+            AND
             s.visit_date <= l.created_at
-    WHERE 
+    WHERE
         s.medium IN ('cpc', 'cpm', 'cpa', 'youtube', 'cpp', 'tg', 'social')
 ),
 
@@ -34,28 +34,28 @@ ads_costs AS (
         utm_campaign,
         SUM(daily_spent) AS total_cost
     FROM (
-        SELECT 
-            campaign_date, 
-            utm_source, 
-            utm_medium, 
-            utm_campaign, 
-            daily_spent 
-        FROM 
+        SELECT
+            campaign_date,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            daily_spent
+        FROM
             vk_ads
         UNION ALL
-        SELECT 
-            campaign_date, 
-            utm_source, 
-            utm_medium, 
-            utm_campaign, 
-            daily_spent 
-        FROM 
+        SELECT
+            campaign_date,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            daily_spent
+        FROM
             ya_ads
     ) AS ads
-    GROUP BY 
-        campaign_date, 
-        utm_source, 
-        utm_medium, 
+    GROUP BY
+        campaign_date,
+        utm_source,
+        utm_medium,
         utm_campaign
 ),
 
@@ -68,28 +68,30 @@ aggregated_data AS (
         COUNT(DISTINCT lc.visitor_id) AS visitors_count,
         COUNT(DISTINCT lc.lead_id) AS leads_count,
         COUNT(
-            DISTINCT CASE 
-                WHEN lc.closing_reason = 'Успешно реализовано' 
-                     OR lc.status_id = 142 
-                THEN lc.lead_id 
+            DISTINCT CASE
+                WHEN
+                    lc.closing_reason = 'Успешно реализовано'
+                    OR lc.status_id = 142
+                THEN lc.lead_id
             END
         ) AS purchases_count,
         SUM(
-            CASE 
-                WHEN lc.closing_reason = 'Успешно реализовано' 
-                     OR lc.status_id = 142 
-                THEN lc.amount 
-                ELSE 0 
+            CASE
+                WHEN
+                    lc.closing_reason = 'Успешно реализовано' 
+                    OR lc.status_id = 142 
+                THEN lc.amount
+                ELSE 0
             END
         ) AS revenue
-    FROM 
+    FROM
         last_paid_click AS lc
-    WHERE 
+    WHERE
         lc.rn = 1
-    GROUP BY 
-        lc.visit_date, 
-        lc.utm_source, 
-        lc.utm_medium, 
+    GROUP BY
+        lc.visit_date,
+        lc.utm_source,
+        lc.utm_medium,
         lc.utm_campaign
 )
 
@@ -103,15 +105,15 @@ SELECT
     ag.leads_count,
     ag.purchases_count,
     ag.revenue
-FROM 
+FROM
     aggregated_data AS ag
-LEFT JOIN 
-    ads_costs AS ac 
-    ON ag.visit_date = ac.campaign_date 
-    AND ag.utm_source = ac.utm_source 
-    AND ag.utm_medium = ac.utm_medium 
+LEFT JOIN
+    ads_costs AS ac
+    ON ag.visit_date = ac.campaign_date
+    AND ag.utm_source = ac.utm_source
+    AND ag.utm_medium = ac.utm_medium
     AND ag.utm_campaign = ac.utm_campaign
-ORDER BY 
+ORDER BY
     ag.revenue DESC NULLS LAST,
     ag.visit_date ASC,
     ag.visitors_count DESC,
