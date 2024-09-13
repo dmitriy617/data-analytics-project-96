@@ -72,15 +72,15 @@ aggregated_data AS (
                 WHEN
                     lc.closing_reason = 'Успешно реализовано'
                     OR lc.status_id = 142
-                THEN lc.lead_id
+                    THEN lc.lead_id
             END
         ) AS purchases_count,
         SUM(
             CASE
                 WHEN
-                    lc.closing_reason = 'Успешно реализовано' 
-                    OR lc.status_id = 142 
-                THEN lc.amount
+                    lc.closing_reason = 'Успешно реализовано'
+                    OR lc.status_id = 142
+                    THEN lc.amount
                 ELSE 0
             END
         ) AS revenue
@@ -109,9 +109,10 @@ FROM
     aggregated_data AS ag
 LEFT JOIN
     ads_costs AS ac
-    ON ag.visit_date = ac.campaign_date
-    AND ag.utm_source = ac.utm_source
-    AND ag.utm_medium = ac.utm_medium
+    ON 
+        ag.visit_date = ac.campaign_date
+        AND ag.utm_source = ac.utm_source
+        AND ag.utm_medium = ac.utm_medium
     AND ag.utm_campaign = ac.utm_campaign
 ORDER BY
     ag.revenue DESC NULLS LAST,
