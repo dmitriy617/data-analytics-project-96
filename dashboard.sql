@@ -11,12 +11,12 @@ WITH last_paid_click AS (
         l.closing_reason,
         l.status_id,
         ROW_NUMBER() OVER (PARTITION BY s.visitor_id ORDER BY s.visit_date DESC)
-    AS rn
+        AS rn
     FROM
         sessions AS s
     LEFT JOIN
         leads AS l
-        ON 
+        ON
             s.visitor_id = l.visitor_id
             AND
             s.visit_date <= l.created_at
@@ -66,20 +66,21 @@ aggregated_data AS (
         COUNT(DISTINCT lc.visitor_id) AS visitors_count,
         COUNT(DISTINCT lc.lead_id) AS leads_count,
         COUNT(
-                DISTINCT CASE
-                    WHEN 
+            DISTINCT CASE
+                WHEN
                     lc.closing_reason = 'Успешно реализовано'
-                    OR 
+                    OR
                     lc.status_id = 142
                     THEN
-                    lc.lead_id
+                        lc.lead_id
             END
         ) AS purchases_count,
         SUM(
             CASE
-                WHEN lc.closing_reason = 'Успешно реализовано'
-                OR lc.status_id = 142
-                THEN lc.amount
+                WHEN 
+                    lc.closing_reason = 'Успешно реализовано'
+                    OR lc.status_id = 142
+                        THEN lc.amount
                 ELSE 0
             END
         ) AS revenue
@@ -95,6 +96,13 @@ aggregated_data AS (
 )
 
 SELECT
+    (COALESCE(ac.total_cost, 0) / NULLIF(ag.visitors_count, 0)) AS cpu,
+    (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
+    (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
+    ((ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF
+    (COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
+    (ag.leads_count * 100) / ag.visitors_count AS leads,
+    (ag.purchases_count * 100) / ag.visitors_count AS purchase
     ag.visit_date,
     ag.visitors_count,
     ag.utm_source,
@@ -103,14 +111,7 @@ SELECT
     COALESCE(ac.total_cost, 0) AS total_cost,
     ag.leads_count,
     ag.purchases_count,
-    ag.revenue,
-    (COALESCE(ac.total_cost, 0) / NULLIF(ag.visitors_count, 0)) AS cpu,
-    (COALESCE(ac.total_cost, 0) / NULLIF(ag.leads_count, 0)) AS cpl,
-    (COALESCE(ac.total_cost, 0) / NULLIF(ag.purchases_count, 0)) AS cppu,
-    ((ag.revenue - COALESCE(ac.total_cost, 0)) / NULLIF
-    (COALESCE(ac.total_cost, 0), 0)) * 100 AS roi,
-    (ag.leads_count * 100) / ag.visitors_count AS leads,
-    (ag.purchases_count * 100) / ag.visitors_count AS purchase
+    ag.revenue
 FROM
     aggregated_data AS ag
 LEFT JOIN
