@@ -109,11 +109,11 @@ FROM
     aggregated_data AS ag
 LEFT JOIN
     ads_costs AS ac
-    ON 
+    ON
         ag.visit_date = ac.campaign_date
         AND ag.utm_source = ac.utm_source
         AND ag.utm_medium = ac.utm_medium
-    AND ag.utm_campaign = ac.utm_campaign
+        AND ag.utm_campaign = ac.utm_campaign
 ORDER BY
     ag.revenue DESC NULLS LAST,
     ag.visit_date ASC,
